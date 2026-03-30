@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AiAgents.Core/AiAgents.Core.csproj" />
+  </Folder>
+</Solution>
