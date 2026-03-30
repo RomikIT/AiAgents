@@ -1,0 +1,96 @@
+{
+  "skills": [
+    {
+      "name": "unit-test-runner",
+      "description": "Automatically discovers and runs unit tests in .NET projects",
+      "capabilities": [
+        "Locate test projects in a given directory",
+        "Execute dotnet test command with configurable parameters",
+        "Parse and analyze test results",
+        "Provide recommendations based on test outcomes",
+        "Support filtering tests by category or name",
+        "Generate test execution reports"
+      ],
+      "parameters": {
+        "projectPath": {
+          "type": "string",
+          "required": true,
+          "description": "Path to the project or directory containing test projects"
+        },
+        "configuration": {
+          "type": "string",
+          "default": "Debug",
+          "description": "Build configuration (Debug/Release)"
+        },
+        "verbosity": {
+          "type": "string",
+          "default": "normal",
+          "description": "Test output verbosity (quiet/minimal/normal/detailed/diagnostic)"
+        },
+        "filter": {
+          "type": "string",
+          "required": false,
+          "description": "Filter expression for running specific tests"
+        },
+        "framework": {
+          "type": "string",
+          "required": false,
+          "description": "Target framework to run tests against"
+        }
+      }
+    },
+    {
+      "name": "test-analyzer",
+      "description": "Analyzes test execution results and provides insights",
+      "capabilities": [
+        "Extract test statistics from execution output",
+        "Identify failing test patterns",
+        "Provide actionable recommendations",
+        "Track test execution duration",
+        "Detect build failures vs test failures"
+      ],
+      "dependencies": [
+        "unit-test-runner"
+      ]
+    },
+    {
+      "name": "project-discovery",
+      "description": "Discovers and identifies test projects in a directory structure",
+      "capabilities": [
+        "Scan directories for .csproj files",
+        "Identify test projects by naming convention",
+        "Support multiple test frameworks (xUnit, NUnit, MSTest)",
+        "Handle nested project structures"
+      ]
+    },
+    {
+      "name": "continuous-testing",
+      "description": "Monitors projects and automatically runs tests on changes",
+      "capabilities": [
+        "Watch file system for code changes",
+        "Trigger test execution on save",
+        "Filter tests based on changed files",
+        "Provide real-time feedback"
+      ],
+      "status": "planned"
+    }
+  ],
+  "configuration": {
+    "defaultTimeout": 300,
+    "maxConcurrentTests": 1,
+    "autoDiscovery": true,
+    "reportFormat": "console"
+  },
+  "supportedFrameworks": [
+    "net9.0",
+    "net8.0",
+    "net7.0",
+    "net6.0",
+    "netcoreapp3.1"
+  ],
+  "supportedTestFrameworks": [
+    "xUnit",
+    "NUnit",
+    "MSTest"
+  ]
+}
