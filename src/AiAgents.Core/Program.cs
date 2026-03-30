@@ -1,4 +1,7 @@
-﻿using AiAgents.Core.Agents;
+﻿using AiAgents.Core.Agents.UnitTest;
+using AiAgents.Core.Agents.UnitTest.Models;
+using AiAgents.Core.Services;
+using Microsoft.Extensions.Configuration;
 
 namespace AiAgents.Core
 {
@@ -6,7 +9,7 @@ namespace AiAgents.Core
     {
         static async Task Main(string[] args)
         {
-            Console.WriteLine("=== AiAgents - Unit Test Runner ===");
+            Console.WriteLine("=== AiAgents - AI-powered Unit Test Runner ===");
             Console.WriteLine();
 
             if (args.Length == 0)
@@ -47,6 +50,8 @@ namespace AiAgents.Core
 
             // Parse configuration options
             var config = new AgentConfiguration();
+            bool skipAi = false;
+
             for (int i = 2; i < args.Length; i++)
             {
                 if (args[i] == "--configuration" || args[i] == "-c")
@@ -72,12 +77,31 @@ namespace AiAgents.Core
                 {
                     config.NoRestore = true;
                 }
+                else if (args[i] == "--no-ai")
+                {
+                    skipAi = true;
+                }
             }
 
             try
             {
+                // Load AI configuration
+                AiAnalysisService? aiService = null;
+
+                if (!skipAi)
+                {
+                    aiService = TryCreateAiService();
+                }
+
                 Console.WriteLine($"Initializing UnitTestAgent for: {projectPath}");
-                var agent = new UnitTestAgent(projectPath, config);
+                if (aiService != null)
+                    Console.WriteLine("AI analysis: enabled");
+                else
+                    Console.WriteLine("AI analysis: disabled (configure appsettings.json or use --no-ai)");
+
+                Console.WriteLine();
+
+                var agent = new UnitTestAgent(projectPath, config, aiService);
 
                 var result = await agent.RunTestsAsync();
 
@@ -107,12 +131,55 @@ namespace AiAgents.Core
                     }
                 }
 
+                if (!string.IsNullOrWhiteSpace(analysis.AiAnalysis))
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("=== AI Analysis ===");
+                    Console.WriteLine(analysis.AiAnalysis);
+                }
+
                 Environment.ExitCode = result.ExitCode;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error: {ex.Message}");
                 Environment.ExitCode = 1;
+            }
+        }
+
+        static AiAnalysisService? TryCreateAiService()
+        {
+            try
+            {
+                var configuration = new ConfigurationBuilder()
+                    .SetBasePath(AppContext.BaseDirectory)
+                    .AddJsonFile("appsettings.json", optional: true)
+                    .AddEnvironmentVariables("AIAGENTS_")
+                    .Build();
+
+                var aiSettings = new AiSettings();
+                configuration.GetSection("AiSettings").Bind(aiSettings);
+
+                // Validate that we have actual credentials configured
+                if (string.Equals(aiSettings.Provider, "AzureOpenAI", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (string.IsNullOrWhiteSpace(aiSettings.AzureOpenAI.ApiKey) ||
+                        aiSettings.AzureOpenAI.ApiKey.Contains("YOUR-"))
+                        return null;
+                }
+                else if (string.Equals(aiSettings.Provider, "OpenAI", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (string.IsNullOrWhiteSpace(aiSettings.OpenAI.ApiKey) ||
+                        aiSettings.OpenAI.ApiKey.Contains("YOUR-"))
+                        return null;
+                }
+
+                return new AiAnalysisService(aiSettings);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Warning] Could not initialize AI service: {ex.Message}");
+                return null;
             }
         }
 
@@ -133,11 +200,24 @@ namespace AiAgents.Core
             Console.WriteLine("  -f, --filter <expression>       Filter tests to run");
             Console.WriteLine("  --no-build                      Skip building the project");
             Console.WriteLine("  --no-restore                    Skip restoring dependencies");
+            Console.WriteLine("  --no-ai                         Skip AI analysis");
+            Console.WriteLine();
+            Console.WriteLine("AI Configuration:");
+            Console.WriteLine("  Configure AI settings in appsettings.json:");
+            Console.WriteLine("    - Provider: 'AzureOpenAI' or 'OpenAI'");
+            Console.WriteLine("    - AzureOpenAI: Endpoint, ApiKey, DeploymentName");
+            Console.WriteLine("    - OpenAI: ApiKey, Model");
+            Console.WriteLine();
+            Console.WriteLine("  Or use environment variables (prefixed with AIAGENTS_):");
+            Console.WriteLine("    - AIAGENTS_AiSettings__Provider");
+            Console.WriteLine("    - AIAGENTS_AiSettings__AzureOpenAI__ApiKey");
+            Console.WriteLine("    - AIAGENTS_AiSettings__OpenAI__ApiKey");
             Console.WriteLine();
             Console.WriteLine("Examples:");
-            Console.WriteLine("  AiAgents test /path/to/project");
+            Console.WriteLine("  AiAgents test C:\\Projects\\MyApp.Tests");
+            Console.WriteLine("  AiAgents test C:\\Projects\\MyApp.Tests\\MyApp.Tests.csproj");
             Console.WriteLine("  AiAgents test /path/to/project -c Release");
-            Console.WriteLine("  AiAgents test /path/to/project -f \"Category=Unit\"");
+            Console.WriteLine("  AiAgents test /path/to/project --no-ai");
         }
     }
 }
